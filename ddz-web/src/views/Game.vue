@@ -23,7 +23,43 @@
         </div>
       </div>
 
-      <div class="opponent-area">
+      <div class="top-opponent">
+        <div class="opponent top">
+          <div class="player-info-card" :class="{ 'is-turn': topPlayerSeat === gameStore.currentPlayerIndex }">
+            <div class="avatar-box">
+              <el-avatar :size="50" :src="topPlayer?.avatar || '/default-avatar.png'" />
+              <div v-if="topPlayer?.identity === 1" class="landlord-tag">地主</div>
+            </div>
+            <div class="info">
+              <span class="name">{{ topPlayer?.nickname || '等待中...' }}</span>
+              <span class="cards-count">剩余 {{ topPlayer?.cardCount || 0 }} 张</span>
+            </div>
+          </div>
+          <div class="opponent-cards">
+            <div
+              v-for="n in (topPlayer?.cardCount || 0)"
+              :key="'top-' + n"
+              class="card-back-item"
+              :style="{ '--idx': n }"
+            >
+              <PokerCard back small />
+            </div>
+          </div>
+          <div v-if="topPlayerLastPlay && topPlayerLastPlay.length > 0" class="played-cards">
+            <div class="play-label">上家出牌</div>
+            <div class="played-cards-row">
+              <PokerCard
+                v-for="card in topPlayerLastPlay"
+                :key="card.code"
+                :card="card"
+                small
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="middle-row">
         <div class="opponent left">
           <div class="player-info-card" :class="{ 'is-turn': leftPlayerSeat === gameStore.currentPlayerIndex }">
             <div class="avatar-box">
@@ -40,6 +76,7 @@
               v-for="n in (leftPlayer?.cardCount || 0)"
               :key="'left-' + n"
               class="card-back-item"
+              :style="{ '--idx': n }"
             >
               <PokerCard back small />
             </div>
@@ -54,6 +91,27 @@
                 small
               />
             </div>
+          </div>
+        </div>
+
+        <div class="center-area">
+          <div v-if="gameStore.gameStatus === 'GRABBING'" class="grabbing-panel">
+            <h3>抢地主阶段</h3>
+            <p v-if="isMyTurnToGrab" class="my-turn">轮到你了！</p>
+            <p v-else>等待其他玩家选择...</p>
+          </div>
+          <div v-else-if="gameStore.gameStatus === 'PLAYING' && gameStore.lastPlayCards && gameStore.lastPlayCards.length > 0" class="center-played">
+            <div class="play-from">
+              {{ getPlayerBySeat(gameStore.lastPlayIndex)?.nickname }} 出牌
+            </div>
+            <div class="center-cards">
+              <PokerCard
+                v-for="card in gameStore.lastPlayCards"
+                :key="card.code"
+                :card="card"
+              />
+            </div>
+            <div class="card-type">{{ gameStore.lastPlayType ? cardTypeNames[gameStore.lastPlayType] : '' }}</div>
           </div>
         </div>
 
@@ -73,6 +131,7 @@
               v-for="n in (rightPlayer?.cardCount || 0)"
               :key="'right-' + n"
               class="card-back-item"
+              :style="{ '--idx': n }"
             >
               <PokerCard back small />
             </div>
@@ -88,27 +147,6 @@
               />
             </div>
           </div>
-        </div>
-      </div>
-
-      <div class="center-area">
-        <div v-if="gameStore.gameStatus === 'GRABBING'" class="grabbing-panel">
-          <h3>抢地主阶段</h3>
-          <p v-if="isMyTurnToGrab" class="my-turn">轮到你了！</p>
-          <p v-else>等待其他玩家选择...</p>
-        </div>
-        <div v-else-if="gameStore.gameStatus === 'PLAYING' && gameStore.lastPlayCards && gameStore.lastPlayCards.length > 0" class="center-played">
-          <div class="play-from">
-            {{ getPlayerBySeat(gameStore.lastPlayIndex)?.nickname }} 出牌
-          </div>
-          <div class="center-cards">
-            <PokerCard
-              v-for="card in gameStore.lastPlayCards"
-              :key="card.code"
-              :card="card"
-            />
-          </div>
-          <div class="card-type">{{ gameStore.lastPlayType ? cardTypeNames[gameStore.lastPlayType] : '' }}</div>
         </div>
       </div>
 
@@ -185,7 +223,7 @@
         </div>
         <div class="player-results">
           <div
-            v-for="(p, index) in gameStore.gameResult?.players"
+            v-for="p in gameStore.gameResult?.players"
             :key="p.userId"
             class="player-result-item"
             :class="{ me: p.userId === userStore.userInfo?.id }"
@@ -209,153 +247,179 @@
   </div>
 </template>
 
-<script setup>import { computed, onMounted, onUnmounted } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { useGameStore } from '@/stores/game';
-import { useUserStore } from '@/stores/user';
-import { initSocket, joinRoom, leaveRoom, playCards, passCards, hintCards, grabLandlord } from '@/socket';
-import { ElMessage, ElMessageBox } from 'element-plus';
-import PokerCard from '@/components/PokerCard.vue';
-const route = useRoute();
-const router = useRouter();
-const gameStore = useGameStore();
-const userStore = useUserStore();
-const roomNo = computed(() => route.params.roomNo);
+<script setup>
+import { computed, onMounted, onUnmounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useGameStore } from '@/stores/game'
+import { useUserStore } from '@/stores/user'
+import { initSocket, joinRoom, leaveRoom, playCards, passCards, hintCards, grabLandlord } from '@/socket'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import PokerCard from '@/components/PokerCard.vue'
+
+const route = useRoute()
+const router = useRouter()
+const gameStore = useGameStore()
+const userStore = useUserStore()
+
+const roomNo = computed(() => route.params.roomNo)
+
 const cardTypeNames = {
- SINGLE: '单张',
- PAIR: '对子',
- TRIPLE: '三张',
- TRIPLE_ONE: '三带一',
- STRAIGHT: '顺子',
- STRAIGHT_PAIR: '连对',
- PLANE: '飞机',
- PLANE_ONE: '飞机带单',
- BOMB: '炸弹',
- ROCKET: '王炸',
- PASS: '不出'
-};
+  SINGLE: '单张',
+  PAIR: '对子',
+  TRIPLE: '三张',
+  TRIPLE_ONE: '三带一',
+  STRAIGHT: '顺子',
+  STRAIGHT_PAIR: '连对',
+  PLANE: '飞机',
+  PLANE_ONE: '飞机带单',
+  BOMB: '炸弹',
+  ROCKET: '王炸',
+  PASS: '不出'
+}
+
 const myPlayer = computed(() => {
- if (gameStore.myIndex >= 0 && gameStore.players[gameStore.myIndex]) {
- return gameStore.players[gameStore.myIndex];
- }
- return null;
-});
-const leftPlayerSeat = computed(() => (gameStore.myIndex + 1) % 3);
-const rightPlayerSeat = computed(() => (gameStore.myIndex + 2) % 3);
-const leftPlayer = computed(() => gameStore.players[leftPlayerSeat.value]);
-const rightPlayer = computed(() => gameStore.players[rightPlayerSeat.value]);
+  if (gameStore.myIndex >= 0 && gameStore.players[gameStore.myIndex]) {
+    return gameStore.players[gameStore.myIndex]
+  }
+  return null
+})
+
+const leftPlayerSeat = computed(() => (gameStore.myIndex + 1) % 4)
+const topPlayerSeat = computed(() => (gameStore.myIndex + 2) % 4)
+const rightPlayerSeat = computed(() => (gameStore.myIndex + 3) % 4)
+
+const leftPlayer = computed(() => gameStore.players[leftPlayerSeat.value])
+const topPlayer = computed(() => gameStore.players[topPlayerSeat.value])
+const rightPlayer = computed(() => gameStore.players[rightPlayerSeat.value])
+
 const leftPlayerLastPlay = computed(() => {
- if (gameStore.lastPlayIndex === leftPlayerSeat.value && gameStore.lastPlayType !== 'PASS') {
- return gameStore.lastPlayCards;
- }
- return [];
-});
+  if (gameStore.lastPlayIndex === leftPlayerSeat.value && gameStore.lastPlayType !== 'PASS') {
+    return gameStore.lastPlayCards
+  }
+  return []
+})
+const topPlayerLastPlay = computed(() => {
+  if (gameStore.lastPlayIndex === topPlayerSeat.value && gameStore.lastPlayType !== 'PASS') {
+    return gameStore.lastPlayCards
+  }
+  return []
+})
 const rightPlayerLastPlay = computed(() => {
- if (gameStore.lastPlayIndex === rightPlayerSeat.value && gameStore.lastPlayType !== 'PASS') {
- return gameStore.lastPlayCards;
- }
- return [];
-});
+  if (gameStore.lastPlayIndex === rightPlayerSeat.value && gameStore.lastPlayType !== 'PASS') {
+    return gameStore.lastPlayCards
+  }
+  return []
+})
+
 const isMyTurnToGrab = computed(() => {
- if (gameStore.gameStatus !== 'GRABBING')
- return false;
- const currentGrabIdx = gameStore.grabOrder[gameStore.currentGrabIndex];
- return currentGrabIdx === gameStore.myIndex;
-});
+  if (gameStore.gameStatus !== 'GRABBING') return false
+  const currentGrabIdx = gameStore.grabOrder[gameStore.currentGrabIndex]
+  return currentGrabIdx === gameStore.myIndex
+})
+
 const canPass = computed(() => {
- return gameStore.lastPlayCards && gameStore.lastPlayCards.length > 0 && gameStore.lastPlayIndex !== gameStore.myIndex;
-});
+  return gameStore.lastPlayCards && gameStore.lastPlayCards.length > 0 && gameStore.lastPlayIndex !== gameStore.myIndex
+})
+
 const isMyWin = computed(() => {
- if (!gameStore.gameResult)
- return false;
- const me = gameStore.gameResult.players.find(p => p.userId === userStore.userInfo?.id);
- if (!me)
- return false;
- const landlordWin = gameStore.gameResult.landlordWin;
- const isLandlord = me.identity === 1;
- return (isLandlord && landlordWin) || (!isLandlord && !landlordWin);
-});
+  if (!gameStore.gameResult) return false
+  const me = gameStore.gameResult.players.find(p => p.userId === userStore.userInfo?.id)
+  if (!me) return false
+  const landlordWin = gameStore.gameResult.landlordWin
+  const isLandlord = me.identity === 1
+  return (isLandlord && landlordWin) || (!isLandlord && !landlordWin)
+})
+
 const myScoreChange = computed(() => {
- if (!gameStore.gameResult)
- return 0;
- const me = gameStore.gameResult.players.find(p => p.userId === userStore.userInfo?.id);
- return me?.scoreChange || 0;
-});
+  if (!gameStore.gameResult) return 0
+  const me = gameStore.gameResult.players.find(p => p.userId === userStore.userInfo?.id)
+  return me?.scoreChange || 0
+})
+
 function getPlayerBySeat(seatIndex) {
- return gameStore.players[seatIndex];
+  return gameStore.players[seatIndex]
 }
+
 function isCardSelected(card) {
- return gameStore.selectedCards.some(c => c.code === card.code);
+  return gameStore.selectedCards.some(c => c.code === card.code)
 }
+
 function toggleCard(card) {
- if (gameStore.gameStatus !== 'PLAYING' || !gameStore.isMyTurn)
- return;
- gameStore.toggleCardSelect(card);
+  if (gameStore.gameStatus !== 'PLAYING' || !gameStore.isMyTurn) return
+  gameStore.toggleCardSelect(card)
 }
+
 function handleReset() {
- gameStore.clearSelectedCards();
+  gameStore.clearSelectedCards()
 }
+
 function handleHint() {
- hintCards(roomNo.value);
+  hintCards(roomNo.value)
 }
+
 function handlePlay() {
- if (gameStore.selectedCards.length === 0) {
- ElMessage.warning('请选择要出的牌');
- return;
- }
- playCards(roomNo.value, gameStore.selectedCards);
- gameStore.clearSelectedCards();
+  if (gameStore.selectedCards.length === 0) {
+    ElMessage.warning('请选择要出的牌')
+    return
+  }
+  playCards(roomNo.value, gameStore.selectedCards)
+  gameStore.clearSelectedCards()
 }
+
 function handlePass() {
- passCards(roomNo.value);
- gameStore.clearSelectedCards();
+  passCards(roomNo.value)
+  gameStore.clearSelectedCards()
 }
+
 function handleGrab(grab) {
- grabLandlord(roomNo.value, grab);
+  grabLandlord(roomNo.value, grab)
 }
+
 function handleLeave() {
- ElMessageBox.confirm('对局中退出会扣除双倍积分，确定要退出吗？', '提示', {
- confirmButtonText: '确定退出',
- cancelButtonText: '取消',
- type: 'warning'
- }).then(() => {
- leaveRoom(roomNo.value);
- gameStore.resetState();
- router.push('/lobby');
- }).catch(() => { });
+  ElMessageBox.confirm('对局中退出会扣除双倍积分，确定要退出吗？', '提示', {
+    confirmButtonText: '确定退出',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(() => {
+    leaveRoom(roomNo.value)
+    gameStore.resetState()
+    router.push('/lobby')
+  }).catch(() => {})
 }
+
 function handleBackToLobby() {
- gameStore.hideResult();
- leaveRoom(roomNo.value);
- gameStore.resetState();
- router.push('/lobby');
+  gameStore.hideResult()
+  leaveRoom(roomNo.value)
+  gameStore.resetState()
+  router.push('/lobby')
 }
+
 function handlePlayAgain() {
- gameStore.hideResult();
- leaveRoom(roomNo.value);
- gameStore.resetState();
- router.push('/lobby');
+  gameStore.hideResult()
+  leaveRoom(roomNo.value)
+  gameStore.resetState()
+  router.push('/lobby')
 }
+
 onMounted(() => {
- if (!userStore.token) {
- router.push('/login');
- return;
- }
- initSocket();
- setTimeout(() => {
- joinRoom(roomNo.value);
- }, 100);
-});
-onUnmounted(() => {
- // 保持socket连接
-});
+  if (!userStore.token) {
+    router.push('/login')
+    return
+  }
+  initSocket()
+  setTimeout(() => {
+    joinRoom(roomNo.value)
+  }, 100)
+})
+
+onUnmounted(() => {})
 </script>
 
 <style scoped lang="scss">
 .game-page {
   .game-table {
     width: 100%;
-    height: 100vh;
+    min-height: 100vh;
     background: linear-gradient(135deg, #0d47a1 0%, #063477 100%);
     position: relative;
     display: flex;
@@ -387,6 +451,7 @@ onUnmounted(() => {
     display: flex;
     align-items: center;
     gap: 10px;
+    z-index: 10;
 
     .label {
       color: #ffd700;
@@ -399,12 +464,25 @@ onUnmounted(() => {
     }
   }
 
-  .opponent-area {
+  .top-opponent {
+    display: flex;
+    justify-content: center;
+    padding-top: 10px 0;
+
+    .opponent.top {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+  }
+
+  .middle-row {
     flex: 1;
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
-    padding: 60px 40px 0;
+    align-items: center;
+    padding: 0 20px;
   }
 
   .opponent {
@@ -412,7 +490,7 @@ onUnmounted(() => {
     flex-direction: column;
     align-items: center;
     gap: 10px;
-    width: 250px;
+    width: 220px;
 
     &.left {
       align-items: flex-start;
@@ -420,6 +498,10 @@ onUnmounted(() => {
 
     &.right {
       align-items: flex-end;
+    }
+
+    &.top {
+      width: auto;
     }
 
     .player-info-card {
@@ -496,20 +578,26 @@ onUnmounted(() => {
     }
   }
 
+  .opponent.top .opponent-cards .card-back-item {
+    left: calc(var(--idx) * 12px);
+  }
+
   .opponent.left .opponent-cards .card-back-item {
-    left: calc(var(--idx) * -15px);
+    left: calc(var(--idx) * 12px);
   }
 
   .opponent.right .opponent-cards .card-back-item {
-    right: calc(var(--idx) * -15px);
+    right: calc(var(--idx) * 12px);
   }
 
   .center-area {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
     text-align: center;
+    flex: 1;
+    min-height: 180px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
 
     .grabbing-panel {
       color: white;
@@ -619,6 +707,10 @@ onUnmounted(() => {
 
         &:hover {
           z-index: 10;
+        }
+
+        &.selected {
+          transform: translateY(-15px);
         }
       }
     }

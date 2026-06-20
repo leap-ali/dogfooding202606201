@@ -28,6 +28,8 @@ public class Room implements Serializable {
 
     private Long player3Id;
 
+    private Long player4Id;
+
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 

@@ -25,6 +25,10 @@ public class GameRoom {
     private Integer winnerIndex;
     private Integer winnerType;
 
+    public static final int PLAYER_COUNT = 4;
+    public static final int BOTTOM_CARD_COUNT = 6;
+    public static final int CARDS_PER_PLAYER = 12;
+
     public GameRoom() {
         this.players = new ArrayList<>();
         this.bottomCards = new ArrayList<>();
@@ -43,7 +47,7 @@ public class GameRoom {
     }
 
     public void addPlayer(Player player) {
-        if (players.size() < 3) {
+        if (players.size() < PLAYER_COUNT) {
             player.setSeatIndex(players.size());
             players.add(player);
         }
@@ -72,7 +76,7 @@ public class GameRoom {
     }
 
     public boolean isFull() {
-        return players.size() >= 3;
+        return players.size() >= PLAYER_COUNT;
     }
 
     public void initGame() {
@@ -95,10 +99,12 @@ public class GameRoom {
         List<Card> allCards = Card.generateAllCards();
         CardUtils.shuffle(allCards);
 
-        for (int i = 0; i < 51; i++) {
-            players.get(i % 3).getCards().add(allCards.get(i));
+        int totalPlayers = players.size();
+        int dealCount = CARDS_PER_PLAYER * totalPlayers;
+        for (int i = 0; i < dealCount; i++) {
+            players.get(i % totalPlayers).getCards().add(allCards.get(i));
         }
-        for (int i = 51; i < 54; i++) {
+        for (int i = dealCount; i < dealCount + BOTTOM_CARD_COUNT && i < allCards.size(); i++) {
             bottomCards.add(allCards.get(i));
         }
 
@@ -107,16 +113,19 @@ public class GameRoom {
         }
 
         Random random = new Random();
-        int startIndex = random.nextInt(3);
+        int startIndex = random.nextInt(totalPlayers);
         grabOrder = new ArrayList<>();
-        for (int i = 0; i < 3; i++) {
-            grabOrder.add((startIndex + i) % 3);
+        for (int i = 0; i < totalPlayers; i++) {
+            grabOrder.add((startIndex + i) % totalPlayers);
         }
         currentGrabIndex = 0;
     }
 
     public boolean grabLandlord(int playerIndex, boolean grab) {
         if (!"GRABBING".equals(gameStatus)) {
+            return false;
+        }
+        if (currentGrabIndex >= grabOrder.size()) {
             return false;
         }
         if (grabOrder.get(currentGrabIndex) != playerIndex) {
@@ -128,7 +137,7 @@ public class GameRoom {
         }
         currentGrabIndex++;
 
-        if (currentGrabIndex >= 3) {
+        if (currentGrabIndex >= grabOrder.size()) {
             if (grabCount > 0) {
                 setLandlord(landlordIndex);
                 return true;
@@ -204,7 +213,7 @@ public class GameRoom {
         passCount++;
         lastPlayType = CardType.PASS;
 
-        if (passCount >= 2) {
+        if (passCount >= PLAYER_COUNT - 1) {
             lastPlayCards = new ArrayList<>();
             lastPlayType = null;
             lastPlayIndex = playerIndex;
@@ -216,7 +225,7 @@ public class GameRoom {
     }
 
     public void nextPlayer() {
-        currentPlayerIndex = (currentPlayerIndex + 1) % 3;
+        currentPlayerIndex = (currentPlayerIndex + 1) % PLAYER_COUNT;
     }
 
     public int checkWin() {

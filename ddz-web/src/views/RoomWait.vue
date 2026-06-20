@@ -30,7 +30,7 @@
         </div>
 
         <div
-          v-for="n in (3 - gameStore.players.length)"
+          v-for="n in (4 - gameStore.players.length)"
           :key="'empty-' + n"
           class="player-slot empty"
         >
@@ -43,7 +43,7 @@
 
       <div v-if="gameStore.gameStatus === 'WAITING'" class="waiting-tip">
         <el-icon class="loading-icon"><Loading /></el-icon>
-        等待其他玩家加入... ({{ gameStore.players.length }}/3)
+        等待其他玩家加入... ({{ gameStore.players.length }}/4)
       </div>
 
       <div v-if="gameStore.gameStatus === 'GRABBING'" class="grabbing-tip">
@@ -60,7 +60,7 @@
           </el-button>
           <el-button
             type="success"
-            :disabled="gameStore.players.length < 3"
+            :disabled="gameStore.players.length < 4"
             @click="handleReady"
           >
             开始游戏
@@ -151,7 +151,7 @@ function handleLeaveRoom() {
 }
 
 function handleReady() {
-  if (gameStore.players.length < 3) {
+  if (gameStore.players.length < 4) {
     ElMessage.warning('人数不足，无法开始')
     return
   }

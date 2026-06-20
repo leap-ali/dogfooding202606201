@@ -50,13 +50,16 @@ public class RoomServiceImpl implements RoomService {
         if (room.getStatus() == 1) {
             throw new RuntimeException("房间已开始对局");
         }
-        if (userId.equals(room.getPlayer1Id()) || userId.equals(room.getPlayer2Id()) || userId.equals(room.getPlayer3Id())) {
+        if (userId.equals(room.getPlayer1Id()) || userId.equals(room.getPlayer2Id())
+                || userId.equals(room.getPlayer3Id()) || userId.equals(room.getPlayer4Id())) {
             return room;
         }
         if (room.getPlayer2Id() == null) {
             room.setPlayer2Id(userId);
         } else if (room.getPlayer3Id() == null) {
             room.setPlayer3Id(userId);
+        } else if (room.getPlayer4Id() == null) {
+            room.setPlayer4Id(userId);
         } else {
             throw new RuntimeException("房间已满");
         }
@@ -76,12 +79,17 @@ public class RoomServiceImpl implements RoomService {
         if (userId.equals(room.getPlayer1Id())) {
             room.setPlayer1Id(room.getPlayer2Id());
             room.setPlayer2Id(room.getPlayer3Id());
-            room.setPlayer3Id(null);
+            room.setPlayer3Id(room.getPlayer4Id());
+            room.setPlayer4Id(null);
         } else if (userId.equals(room.getPlayer2Id())) {
             room.setPlayer2Id(room.getPlayer3Id());
-            room.setPlayer3Id(null);
+            room.setPlayer3Id(room.getPlayer4Id());
+            room.setPlayer4Id(null);
         } else if (userId.equals(room.getPlayer3Id())) {
-            room.setPlayer3Id(null);
+            room.setPlayer3Id(room.getPlayer4Id());
+            room.setPlayer4Id(null);
+        } else if (userId.equals(room.getPlayer4Id())) {
+            room.setPlayer4Id(null);
         }
         if (room.getPlayer1Id() == null) {
             roomMapper.deleteById(room.getId());

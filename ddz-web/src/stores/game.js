@@ -35,13 +35,20 @@ export const useGameStore = defineStore('game', {
       return state.myIndex === state.landlordIndex
     },
     leftPlayer: (state) => {
-      const leftIdx = (state.myIndex + 1) % 3
-      return state.players[leftIdx] || null
+      const idx = (state.myIndex + 1) % 4
+      return state.players[idx] || null
+    },
+    topPlayer: (state) => {
+      const idx = (state.myIndex + 2) % 4
+      return state.players[idx] || null
     },
     rightPlayer: (state) => {
-      const rightIdx = (state.myIndex + 2) % 3
-      return state.players[rightIdx] || null
-    }
+      const idx = (state.myIndex + 3) % 4
+      return state.players[idx] || null
+    },
+    leftPlayerSeat: (state) => (state.myIndex + 1) % 4,
+    topPlayerSeat: (state) => (state.myIndex + 2) % 4,
+    rightPlayerSeat: (state) => (state.myIndex + 3) % 4
   },
 
   actions: {
@@ -81,6 +88,7 @@ export const useGameStore = defineStore('game', {
         this.grabOrder = state.grabOrder
         this.currentGrabIndex = state.currentGrabIndex
       }
+      this.passCount = state.passCount || 0
     },
 
     setMySelectedCards(cards) {

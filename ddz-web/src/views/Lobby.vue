@@ -2,7 +2,7 @@
   <div class="lobby-page page-container">
     <div class="lobby-header">
       <div class="logo-area">
-        <h1>三人斗地主</h1>
+        <h1>四人斗地主</h1>
       </div>
       <div class="user-area">
         <div class="user-info">
@@ -39,7 +39,7 @@
             <div class="room-info">
               <span class="base-score">底分: {{ room.baseScore }}</span>
               <span class="player-count">
-                {{ getPlayerCount(room) }}/3
+                {{ getPlayerCount(room) }}/4
               </span>
             </div>
             <div class="room-status" :class="{ playing: room.status === 1 }">
@@ -172,6 +172,7 @@ function getPlayerCount(room) {
   if (room.player1Id) count++
   if (room.player2Id) count++
   if (room.player3Id) count++
+  if (room.player4Id) count++
   return count
 }
 
